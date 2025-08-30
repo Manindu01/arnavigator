@@ -28,9 +28,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-          title: 'Login & Sinup UI',
+      title: 'Login & Sinup UI',
       theme: ThemeData(primarySwatch: Colors.teal),
-          initialRoute: '/home', // Changed to home for testing
+      initialRoute: '/login', // Changed to home for testing
       routes: {
         '/login': (_) => const LoginScreen(),
         '/signup': (_) => const SignUpScreen(),
