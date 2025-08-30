@@ -1677,11 +1677,10 @@ class ParkingScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Starting AR navigation to your car...',
-                          ),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const NavigationScreen(),
                         ),
                       );
                     },
@@ -2013,11 +2012,10 @@ class FoodCourtScreen extends StatelessWidget {
                     ),
                     trailing: ElevatedButton(
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Navigating to ${restaurant['name']}...',
-                            ),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const NavigationScreen(),
                           ),
                         );
                       },
