@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'ar_navigator_screen.dart';
+import 'services/storage_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,6 +17,18 @@ class _HomeScreenState extends State<HomeScreen> {
     const NavigatorPage(),
     const ProfilePage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Load last selected tab
+    StorageService.getInt(StorageKeys.selectedTabIndex).then((value) {
+      if (!mounted) return;
+      if (value != null && value >= 0 && value < _pages.length) {
+        setState(() => _selectedIndex = value);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,9 +51,9 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedItemColor: Colors.white70,
         currentIndex: _selectedIndex,
         onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
+          setState(() => _selectedIndex = index);
+          // Save selection
+          StorageService.setInt(StorageKeys.selectedTabIndex, index);
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
@@ -397,8 +410,65 @@ class HomePage extends StatelessWidget {
   }
 }
 
-class NavigatorPage extends StatelessWidget {
+class NavigatorPage extends StatefulWidget {
   const NavigatorPage({super.key});
+
+  @override
+  State<NavigatorPage> createState() => _NavigatorPageState();
+}
+
+class _NavigatorPageState extends State<NavigatorPage> {
+  List<String> _recentLocations = [];
+
+  final List<Map<String, dynamic>> _defaultRecent = const [
+    {
+      'location': 'Westfield Shopping Center',
+      'distance': 'Floor 2 - Electronics',
+      'icon': Icons.shopping_bag,
+    },
+    {
+      'location': 'Mall of America',
+      'distance': 'Food Court - Level 3',
+      'icon': Icons.restaurant,
+    },
+    {
+      'location': 'Times Square Mall',
+      'distance': 'Nike Store - Ground Floor',
+      'icon': Icons.store,
+    },
+    {
+      'location': 'Century City Mall',
+      'distance': 'Parking Level B2',
+      'icon': Icons.local_parking,
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecent();
+  }
+
+  Future<void> _loadRecent() async {
+    final list = await StorageService.getStringList(
+      StorageKeys.recentDestinations,
+    );
+    if (!mounted) return;
+    setState(() => _recentLocations = list);
+  }
+
+  Future<void> _addRecent(String location) async {
+    final list = await StorageService.getStringList(
+      StorageKeys.recentDestinations,
+    );
+    // Move to front and dedupe
+    list.remove(location);
+    list.insert(0, location);
+    if (list.length > 10) list.removeRange(10, list.length);
+    await StorageService.setStringList(StorageKeys.recentDestinations, list);
+    if (!mounted) return;
+    setState(() => _recentLocations = list);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -494,29 +564,23 @@ class NavigatorPage extends StatelessWidget {
             Expanded(
               child: ListView(
                 children: [
-                  _buildRecentSearchItem(
-                    location: 'Westfield Shopping Center',
-                    distance: 'Floor 2 - Electronics',
-                    icon: Icons.shopping_bag,
-                    context: context,
+                  // Persisted recents
+                  ..._recentLocations.map(
+                    (loc) => _buildRecentSearchItem(
+                      location: loc,
+                      distance: 'Recent destination',
+                      icon: Icons.history,
+                      onNavigate: () => _addRecent(loc),
+                    ),
                   ),
-                  _buildRecentSearchItem(
-                    location: 'Mall of America',
-                    distance: 'Food Court - Level 3',
-                    icon: Icons.restaurant,
-                    context: context,
-                  ),
-                  _buildRecentSearchItem(
-                    location: 'Times Square Mall',
-                    distance: 'Nike Store - Ground Floor',
-                    icon: Icons.store,
-                    context: context,
-                  ),
-                  _buildRecentSearchItem(
-                    location: 'Century City Mall',
-                    distance: 'Parking Level B2',
-                    icon: Icons.local_parking,
-                    context: context,
+                  // Defaults
+                  ..._defaultRecent.map(
+                    (e) => _buildRecentSearchItem(
+                      location: e['location'] as String,
+                      distance: e['distance'] as String,
+                      icon: e['icon'] as IconData,
+                      onNavigate: () => _addRecent(e['location'] as String),
+                    ),
                   ),
                 ],
               ),
@@ -569,7 +633,7 @@ class NavigatorPage extends StatelessWidget {
     required String location,
     required String distance,
     required IconData icon,
-    required BuildContext context,
+    required VoidCallback onNavigate,
   }) {
     return Card(
       color: const Color(0xff1b263b),
@@ -599,6 +663,7 @@ class NavigatorPage extends StatelessWidget {
           ),
           tooltip: 'Navigate',
           onPressed: () {
+            onNavigate();
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const NavigationScreen()),
@@ -606,6 +671,7 @@ class NavigatorPage extends StatelessWidget {
           },
         ),
         onTap: () {
+          onNavigate();
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const NavigationScreen()),
@@ -725,13 +791,57 @@ class ChatBotScreen extends StatefulWidget {
 class _ChatBotScreenState extends State<ChatBotScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<ChatMessage> _messages = [
-    ChatMessage(
-      text: "Hello! I'm your virtual assistant. How can I help you today?",
-      isBot: true,
-      timestamp: DateTime.now(),
-    ),
-  ];
+  List<ChatMessage> _messages = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMessages();
+  }
+
+  Future<void> _loadMessages() async {
+    final data = await StorageService.getJson(StorageKeys.chatMessages);
+    if (!mounted) return;
+    if (data is List) {
+      setState(() {
+        _messages = data.map((e) {
+          final map = e as Map<String, dynamic>;
+          return ChatMessage(
+            text: map['text'] as String? ?? '',
+            isBot: map['isBot'] as bool? ?? false,
+            timestamp:
+                DateTime.tryParse(map['ts'] as String? ?? '') ?? DateTime.now(),
+          );
+        }).toList();
+      });
+    }
+    if (_messages.isEmpty) {
+      setState(() {
+        _messages = [
+          ChatMessage(
+            text:
+                "Hello! I'm your virtual assistant. How can I help you today?",
+            isBot: true,
+            timestamp: DateTime.now(),
+          ),
+        ];
+      });
+      _persistMessages();
+    }
+  }
+
+  Future<void> _persistMessages() async {
+    final list = _messages
+        .map(
+          (m) => {
+            'text': m.text,
+            'isBot': m.isBot,
+            'ts': m.timestamp.toIso8601String(),
+          },
+        )
+        .toList();
+    await StorageService.setJson(StorageKeys.chatMessages, list);
+  }
 
   @override
   void dispose() {
@@ -752,6 +862,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     setState(() {
       _messages.add(userMessage);
     });
+    _persistMessages();
 
     _messageController.clear();
     _scrollToBottom();
@@ -768,6 +879,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           ),
         );
       });
+      _persistMessages();
       _scrollToBottom();
     });
   }
@@ -1416,12 +1528,15 @@ class _StoreDirectoryScreenState extends State<StoreDirectoryScreen> {
   String selectedCategory = 'All';
   final List<String> categories = [
     'All',
+    'Favorites',
     'Fashion',
     'Electronics',
     'Food',
     'Health',
     'Entertainment',
   ];
+
+  Set<String> favoriteStores = {};
 
   final List<Map<String, dynamic>> stores = [
     {
@@ -1484,9 +1599,41 @@ class _StoreDirectoryScreenState extends State<StoreDirectoryScreen> {
 
   List<Map<String, dynamic>> get filteredStores {
     if (selectedCategory == 'All') return stores;
+    if (selectedCategory == 'Favorites') {
+      return stores
+          .where((s) => favoriteStores.contains(s['name'] as String))
+          .toList();
+    }
     return stores
         .where((store) => store['category'] == selectedCategory)
         .toList();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFavorites();
+  }
+
+  Future<void> _loadFavorites() async {
+    final list = await StorageService.getStringList(StorageKeys.favoriteStores);
+    if (!mounted) return;
+    setState(() => favoriteStores = list.toSet());
+  }
+
+  Future<void> _toggleFavorite(String name) async {
+    final set = favoriteStores.toSet();
+    if (set.contains(name)) {
+      set.remove(name);
+    } else {
+      set.add(name);
+    }
+    await StorageService.setStringList(
+      StorageKeys.favoriteStores,
+      set.toList(),
+    );
+    if (!mounted) return;
+    setState(() => favoriteStores = set);
   }
 
   @override
@@ -1540,6 +1687,7 @@ class _StoreDirectoryScreenState extends State<StoreDirectoryScreen> {
               itemCount: filteredStores.length,
               itemBuilder: (context, index) {
                 final store = filteredStores[index];
+                final isFav = favoriteStores.contains(store['name']);
                 return Card(
                   color: const Color(0xff1b263b),
                   margin: const EdgeInsets.only(bottom: 12),
@@ -1578,17 +1726,34 @@ class _StoreDirectoryScreenState extends State<StoreDirectoryScreen> {
                         ),
                       ],
                     ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.directions, color: Colors.orange),
-                      tooltip: 'Navigate',
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const NavigationScreen(),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            isFav ? Icons.favorite : Icons.favorite_border,
+                            color: isFav ? Colors.redAccent : Colors.white54,
                           ),
-                        );
-                      },
+                          tooltip: isFav ? 'Unfavorite' : 'Add to favorites',
+                          onPressed: () =>
+                              _toggleFavorite(store['name'] as String),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.directions,
+                            color: Colors.orange,
+                          ),
+                          tooltip: 'Navigate',
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const NavigationScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
                 );
