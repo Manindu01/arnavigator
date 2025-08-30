@@ -30,7 +30,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Login & Sinup UI',
       theme: ThemeData(primarySwatch: Colors.teal),
-      initialRoute: '/login', // Changed to home for testing
+      initialRoute: '/home', // Changed to home for testing
       routes: {
         '/login': (_) => const LoginScreen(),
         '/signup': (_) => const SignUpScreen(),

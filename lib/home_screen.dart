@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'ar_navigator_screen.dart';
 import 'services/storage_service.dart';
 
@@ -2003,10 +2004,7 @@ class ParkingScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            _buildParkingLevel('Ground Level', 45, 120, Colors.red),
-            _buildParkingLevel('Level B1', 78, 150, Colors.orange),
-            _buildParkingLevel('Level B2', 92, 180, Colors.green),
-            _buildParkingLevel('Level B3', 134, 200, Colors.green),
+            ParkingAvailabilityList(),
 
             const SizedBox(height: 30),
 
@@ -2042,58 +2040,6 @@ class ParkingScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildParkingLevel(
-    String level,
-    int available,
-    int total,
-    Color color,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xff1b263b),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  level,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  '$available available of $total spaces',
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            '${((available / total) * 100).round()}%',
-            style: TextStyle(color: color, fontWeight: FontWeight.bold),
-          ),
-        ],
       ),
     );
   }
@@ -2731,6 +2677,148 @@ class EventsScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// Availability Tile Widget
+class AvailabilityTile extends StatelessWidget {
+  final String title;
+  final int free;
+  final int total;
+  const AvailabilityTile({
+    super.key,
+    required this.title,
+    required this.free,
+    required this.total,
+  });
+
+  Color _percentColor(double p) {
+    if (p < 0.4) return const Color(0xFFE74C3C); // red
+    if (p < 0.6) return const Color(0xFFF39C12); // amber
+    return const Color(0xFF27AE60); // green
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = total == 0 ? 0.0 : free / total;
+    return Card(
+      color: const Color(0xFF23303D),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        title: Text(title, style: const TextStyle(color: Colors.white)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 6),
+            LinearProgressIndicator(
+              value: p,
+              color: _percentColor(p),
+              backgroundColor: const Color(0xFF2E3B49),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '$free available of $total',
+              style: const TextStyle(color: Colors.white70),
+            ),
+          ],
+        ),
+        trailing: Text(
+          '${(p * 100).round()}%',
+          style: TextStyle(
+            color: _percentColor(p),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Car Location Storage
+class CarLocationStore {
+  static const _kLevel = 'car_level';
+  static const _kSection = 'car_section';
+  static const _kSpot = 'car_spot';
+  static const _kSavedAt = 'car_saved_at';
+
+  static Future<void> save({
+    required String level,
+    required String section,
+    required String spot,
+  }) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString(_kLevel, level);
+    await sp.setString(_kSection, section);
+    await sp.setString(_kSpot, spot);
+    await sp.setInt(_kSavedAt, DateTime.now().millisecondsSinceEpoch);
+  }
+
+  static Future<({String? level, String? section, String? spot, Duration? ago})>
+  read() async {
+    final sp = await SharedPreferences.getInstance();
+    final ts = sp.getInt(_kSavedAt);
+    return (
+      level: sp.getString(_kLevel),
+      section: sp.getString(_kSection),
+      spot: sp.getString(_kSpot),
+      ago: ts == null
+          ? null
+          : DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(ts)),
+    );
+  }
+
+  static Future<void> clear() async =>
+      (await SharedPreferences.getInstance()).remove(_kSavedAt);
+}
+
+// Parking Availability List
+class ParkingAvailabilityList extends StatefulWidget {
+  const ParkingAvailabilityList({super.key});
+  @override
+  State<ParkingAvailabilityList> createState() =>
+      _ParkingAvailabilityListState();
+}
+
+class _ParkingAvailabilityListState extends State<ParkingAvailabilityList> {
+  List<({String level, int free, int total})> _levels = const [];
+  // Optional: WebSocketChannel? _ws;
+
+  Future<void> _load() async {
+    // TODO: call your API/service and setState with fresh values
+    setState(() {
+      _levels = [
+        (level: 'Ground', free: 45, total: 120),
+        (level: 'B1', free: 78, total: 150),
+        (level: 'B2', free: 92, total: 180),
+        (level: 'B3', free: 134, total: 200),
+      ];
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // This widget is embedded inside a SingleChildScrollView on ParkingScreen,
+    // so we must not create another scrollable with unbounded height.
+    // Use a shrink-wrapped, non-scrollable list to avoid layout exceptions.
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _levels.length,
+      itemBuilder: (_, i) {
+        final l = _levels[i];
+        return AvailabilityTile(
+          title: 'Level ${l.level}',
+          free: l.free,
+          total: l.total,
+        );
+      },
     );
   }
 }
