@@ -71,6 +71,137 @@ class _HomeScreenState extends State<HomeScreen> {
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
+  // Sample notifications to show in the modal
+  final List<Map<String, dynamic>> _notifications = const [
+    {
+      'title': '50% OFF - Nike Store',
+      'subtitle': 'This weekend only. Limited time offer!',
+      'icon': Icons.local_offer,
+      'color': Colors.orange,
+    },
+    {
+      'title': 'Buy 1 Get 1 - McDonald\'s',
+      'subtitle': 'On selected burgers at the food court.',
+      'icon': Icons.fastfood,
+      'color': Colors.green,
+    },
+    {
+      'title': 'New Arrivals - Zara',
+      'subtitle': 'Autumn collection now in stores.',
+      'icon': Icons.shopping_bag,
+      'color': Colors.blue,
+    },
+    {
+      'title': 'Free Parking',
+      'subtitle': 'Spend over \$100 to get 2 hours free parking.',
+      'icon': Icons.local_parking,
+      'color': Colors.purple,
+    },
+  ];
+
+  void _openNotifications(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xff0d1b2a),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 12,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Notifications',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    icon: const Icon(Icons.close, color: Colors.white70),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  // Limit height so list can scroll inside the sheet
+                  maxHeight: MediaQuery.of(ctx).size.height * 0.6,
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _notifications.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final item = _notifications[index];
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xff1b263b),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.06),
+                        ),
+                      ),
+                      child: ListTile(
+                        leading: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: (item['color'] as Color).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            item['icon'] as IconData,
+                            color: item['color'] as Color,
+                          ),
+                        ),
+                        title: Text(
+                          item['title'] as String,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Text(
+                          item['subtitle'] as String,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                        trailing: const Icon(
+                          Icons.chevron_right,
+                          color: Colors.white38,
+                        ),
+                        onTap: () => Navigator.of(ctx).pop(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -110,7 +241,7 @@ class HomePage extends StatelessWidget {
                       Icons.notifications_outlined,
                       color: Colors.white70,
                     ),
-                    onPressed: () {},
+                    onPressed: () => _openNotifications(context),
                   ),
                 ),
               ],
