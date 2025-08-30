@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'ar_navigator_screen.dart';
+import 'services/storage_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,6 +17,18 @@ class _HomeScreenState extends State<HomeScreen> {
     const NavigatorPage(),
     const ProfilePage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Load last selected tab
+    StorageService.getInt(StorageKeys.selectedTabIndex).then((value) {
+      if (!mounted) return;
+      if (value != null && value >= 0 && value < _pages.length) {
+        setState(() => _selectedIndex = value);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,23 +51,17 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedItemColor: Colors.white70,
         currentIndex: _selectedIndex,
         onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
+          setState(() => _selectedIndex = index);
+          // Save selection
+          StorageService.setInt(StorageKeys.selectedTabIndex, index);
         },
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
             icon: Icon(Icons.navigation),
             label: 'Navigator',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );
@@ -80,10 +88,7 @@ class HomePage extends StatelessWidget {
                   children: [
                     const Text(
                       'Good Morning!',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                      ),
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
                     ),
                     const Text(
                       'Welcome Back',
@@ -101,7 +106,10 @@ class HomePage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: IconButton(
-                    icon: const Icon(Icons.notifications_outlined, color: Colors.white70),
+                    icon: const Icon(
+                      Icons.notifications_outlined,
+                      color: Colors.white70,
+                    ),
                     onPressed: () {},
                   ),
                 ),
@@ -149,7 +157,9 @@ class HomePage extends StatelessWidget {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const StoreDirectoryScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const StoreDirectoryScreen(),
+                        ),
                       );
                     },
                   ),
@@ -164,7 +174,9 @@ class HomePage extends StatelessWidget {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const ParkingScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const ParkingScreen(),
+                        ),
                       );
                     },
                   ),
@@ -183,7 +195,9 @@ class HomePage extends StatelessWidget {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const FoodCourtScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const FoodCourtScreen(),
+                        ),
                       );
                     },
                   ),
@@ -198,7 +212,9 @@ class HomePage extends StatelessWidget {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const DealsScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const DealsScreen(),
+                        ),
                       );
                     },
                   ),
@@ -217,7 +233,9 @@ class HomePage extends StatelessWidget {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const CarRentalScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const CarRentalScreen(),
+                        ),
                       );
                     },
                   ),
@@ -232,7 +250,9 @@ class HomePage extends StatelessWidget {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const EventsScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const EventsScreen(),
+                        ),
                       );
                     },
                   ),
@@ -251,7 +271,7 @@ class HomePage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -333,15 +353,16 @@ class HomePage extends StatelessWidget {
                   ),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                    ),
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white38, size: 14),
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.white38,
+              size: 14,
+            ),
           ],
         ),
       ),
@@ -380,10 +401,7 @@ class HomePage extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 12,
-              ),
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ],
         ),
@@ -392,8 +410,65 @@ class HomePage extends StatelessWidget {
   }
 }
 
-class NavigatorPage extends StatelessWidget {
+class NavigatorPage extends StatefulWidget {
   const NavigatorPage({super.key});
+
+  @override
+  State<NavigatorPage> createState() => _NavigatorPageState();
+}
+
+class _NavigatorPageState extends State<NavigatorPage> {
+  List<String> _recentLocations = [];
+
+  final List<Map<String, dynamic>> _defaultRecent = const [
+    {
+      'location': 'Westfield Shopping Center',
+      'distance': 'Floor 2 - Electronics',
+      'icon': Icons.shopping_bag,
+    },
+    {
+      'location': 'Mall of America',
+      'distance': 'Food Court - Level 3',
+      'icon': Icons.restaurant,
+    },
+    {
+      'location': 'Times Square Mall',
+      'distance': 'Nike Store - Ground Floor',
+      'icon': Icons.store,
+    },
+    {
+      'location': 'Century City Mall',
+      'distance': 'Parking Level B2',
+      'icon': Icons.local_parking,
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecent();
+  }
+
+  Future<void> _loadRecent() async {
+    final list = await StorageService.getStringList(
+      StorageKeys.recentDestinations,
+    );
+    if (!mounted) return;
+    setState(() => _recentLocations = list);
+  }
+
+  Future<void> _addRecent(String location) async {
+    final list = await StorageService.getStringList(
+      StorageKeys.recentDestinations,
+    );
+    // Move to front and dedupe
+    list.remove(location);
+    list.insert(0, location);
+    if (list.length > 10) list.removeRange(10, list.length);
+    await StorageService.setStringList(StorageKeys.recentDestinations, list);
+    if (!mounted) return;
+    setState(() => _recentLocations = list);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -414,10 +489,7 @@ class NavigatorPage extends StatelessWidget {
             const SizedBox(height: 8),
             const Text(
               'Find your way through shopping malls with AR',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.white70, fontSize: 16),
             ),
             const SizedBox(height: 30),
 
@@ -431,7 +503,7 @@ class NavigatorPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             Row(
               children: [
                 Expanded(
@@ -454,7 +526,7 @@ class NavigatorPage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             Row(
               children: [
                 Expanded(
@@ -488,29 +560,27 @@ class NavigatorPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             Expanded(
               child: ListView(
                 children: [
-                  _buildRecentSearchItem(
-                    location: 'Westfield Shopping Center',
-                    distance: 'Floor 2 - Electronics',
-                    icon: Icons.shopping_bag,
+                  // Persisted recents
+                  ..._recentLocations.map(
+                    (loc) => _buildRecentSearchItem(
+                      location: loc,
+                      distance: 'Recent destination',
+                      icon: Icons.history,
+                      onNavigate: () => _addRecent(loc),
+                    ),
                   ),
-                  _buildRecentSearchItem(
-                    location: 'Mall of America',
-                    distance: 'Food Court - Level 3',
-                    icon: Icons.restaurant,
-                  ),
-                  _buildRecentSearchItem(
-                    location: 'Times Square Mall',
-                    distance: 'Nike Store - Ground Floor',
-                    icon: Icons.store,
-                  ),
-                  _buildRecentSearchItem(
-                    location: 'Century City Mall',
-                    distance: 'Parking Level B2',
-                    icon: Icons.local_parking,
+                  // Defaults
+                  ..._defaultRecent.map(
+                    (e) => _buildRecentSearchItem(
+                      location: e['location'] as String,
+                      distance: e['distance'] as String,
+                      icon: e['icon'] as IconData,
+                      onNavigate: () => _addRecent(e['location'] as String),
+                    ),
                   ),
                 ],
               ),
@@ -551,10 +621,7 @@ class NavigatorPage extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-            ),
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
             textAlign: TextAlign.center,
           ),
         ],
@@ -566,6 +633,7 @@ class NavigatorPage extends StatelessWidget {
     required String location,
     required String distance,
     required IconData icon,
+    required VoidCallback onNavigate,
   }) {
     return Card(
       color: const Color(0xff1b263b),
@@ -581,15 +649,33 @@ class NavigatorPage extends StatelessWidget {
         ),
         title: Text(
           location,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w500,
+          ),
         ),
-        subtitle: Text(
-          distance,
-          style: TextStyle(color: Colors.grey[400]),
+        subtitle: Text(distance, style: TextStyle(color: Colors.grey[400])),
+        trailing: IconButton(
+          icon: const Icon(
+            Icons.arrow_forward_ios,
+            color: Colors.grey,
+            size: 16,
+          ),
+          tooltip: 'Navigate',
+          onPressed: () {
+            onNavigate();
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NavigationScreen()),
+            );
+          },
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
         onTap: () {
-          // Navigate to mall location or store
+          onNavigate();
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const NavigationScreen()),
+          );
         },
       ),
     );
@@ -632,10 +718,7 @@ class ProfilePage extends StatelessWidget {
                   ),
                   const Text(
                     'john.doe@example.com',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                 ],
               ),
@@ -685,11 +768,12 @@ class ProfilePage extends StatelessWidget {
       ),
       child: ListTile(
         leading: Icon(icon, color: Colors.orange),
-        title: Text(
-          title,
-          style: const TextStyle(color: Colors.white),
+        title: Text(title, style: const TextStyle(color: Colors.white)),
+        trailing: const Icon(
+          Icons.arrow_forward_ios,
+          color: Colors.white70,
+          size: 16,
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 16),
         onTap: () {},
       ),
     );
@@ -707,13 +791,57 @@ class ChatBotScreen extends StatefulWidget {
 class _ChatBotScreenState extends State<ChatBotScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<ChatMessage> _messages = [
-    ChatMessage(
-      text: "Hello! I'm your virtual assistant. How can I help you today?",
-      isBot: true,
-      timestamp: DateTime.now(),
-    ),
-  ];
+  List<ChatMessage> _messages = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMessages();
+  }
+
+  Future<void> _loadMessages() async {
+    final data = await StorageService.getJson(StorageKeys.chatMessages);
+    if (!mounted) return;
+    if (data is List) {
+      setState(() {
+        _messages = data.map((e) {
+          final map = e as Map<String, dynamic>;
+          return ChatMessage(
+            text: map['text'] as String? ?? '',
+            isBot: map['isBot'] as bool? ?? false,
+            timestamp:
+                DateTime.tryParse(map['ts'] as String? ?? '') ?? DateTime.now(),
+          );
+        }).toList();
+      });
+    }
+    if (_messages.isEmpty) {
+      setState(() {
+        _messages = [
+          ChatMessage(
+            text:
+                "Hello! I'm your virtual assistant. How can I help you today?",
+            isBot: true,
+            timestamp: DateTime.now(),
+          ),
+        ];
+      });
+      _persistMessages();
+    }
+  }
+
+  Future<void> _persistMessages() async {
+    final list = _messages
+        .map(
+          (m) => {
+            'text': m.text,
+            'isBot': m.isBot,
+            'ts': m.timestamp.toIso8601String(),
+          },
+        )
+        .toList();
+    await StorageService.setJson(StorageKeys.chatMessages, list);
+  }
 
   @override
   void dispose() {
@@ -734,6 +862,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     setState(() {
       _messages.add(userMessage);
     });
+    _persistMessages();
 
     _messageController.clear();
     _scrollToBottom();
@@ -742,19 +871,22 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     Future.delayed(const Duration(milliseconds: 1500), () {
       final botResponse = _generateBotResponse(userMessage.text);
       setState(() {
-        _messages.add(ChatMessage(
-          text: botResponse,
-          isBot: true,
-          timestamp: DateTime.now(),
-        ));
+        _messages.add(
+          ChatMessage(
+            text: botResponse,
+            isBot: true,
+            timestamp: DateTime.now(),
+          ),
+        );
       });
+      _persistMessages();
       _scrollToBottom();
     });
   }
 
   String _generateBotResponse(String userMessage) {
     final message = userMessage.toLowerCase();
-    
+
     if (message.contains('hello') || message.contains('hi')) {
       return "Hello! How can I assist you today?";
     } else if (message.contains('help')) {
@@ -821,10 +953,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () {},
-          ),
+          IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
         ],
       ),
       body: Column(
@@ -841,15 +970,13 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               },
             ),
           ),
-          
+
           // Message Input
           Container(
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
               color: Color(0xff1b263b),
-              border: Border(
-                top: BorderSide(color: Colors.white12, width: 1),
-              ),
+              border: Border(top: BorderSide(color: Colors.white12, width: 1)),
             ),
             child: Row(
               children: [
@@ -900,8 +1027,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       child: Row(
-        mainAxisAlignment: message.isBot 
-            ? MainAxisAlignment.start 
+        mainAxisAlignment: message.isBot
+            ? MainAxisAlignment.start
             : MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -921,16 +1048,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: message.isBot 
-                    ? const Color(0xff1b263b)
-                    : Colors.orange,
+                color: message.isBot ? const Color(0xff1b263b) : Colors.orange,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
                   bottomLeft: Radius.circular(message.isBot ? 4 : 18),
                   bottomRight: Radius.circular(message.isBot ? 18 : 4),
                 ),
-                border: message.isBot 
+                border: message.isBot
                     ? Border.all(color: Colors.white12)
                     : null,
               ),
@@ -948,9 +1073,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                   Text(
                     _formatTime(message.timestamp),
                     style: TextStyle(
-                      color: message.isBot 
-                          ? Colors.white54 
-                          : Colors.white70,
+                      color: message.isBot ? Colors.white54 : Colors.white70,
                       fontSize: 10,
                     ),
                   ),
@@ -1018,25 +1141,25 @@ class _CarRentalScreenState extends State<CarRentalScreen> {
       'name': 'Economy',
       'price': '\$25/day',
       'image': '🚗',
-      'features': ['Manual', '4 Seats', 'AC']
+      'features': ['Manual', '4 Seats', 'AC'],
     },
     {
       'name': 'Compact',
       'price': '\$35/day',
       'image': '🚙',
-      'features': ['Automatic', '5 Seats', 'AC']
+      'features': ['Automatic', '5 Seats', 'AC'],
     },
     {
       'name': 'SUV',
       'price': '\$65/day',
       'image': '🚐',
-      'features': ['Automatic', '7 Seats', 'AC', '4WD']
+      'features': ['Automatic', '7 Seats', 'AC', '4WD'],
     },
     {
       'name': 'Luxury',
       'price': '\$120/day',
       'image': '🚘',
-      'features': ['Automatic', '5 Seats', 'Leather', 'Premium']
+      'features': ['Automatic', '5 Seats', 'Leather', 'Premium'],
     },
   ];
 
@@ -1075,21 +1198,29 @@ class _CarRentalScreenState extends State<CarRentalScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Location Selection
                   Row(
                     children: [
                       Expanded(
-                        child: _buildLocationCard('Pickup', pickupLocation, Icons.location_on),
+                        child: _buildLocationCard(
+                          'Pickup',
+                          pickupLocation,
+                          Icons.location_on,
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: _buildLocationCard('Return', returnLocation, Icons.location_off),
+                        child: _buildLocationCard(
+                          'Return',
+                          returnLocation,
+                          Icons.location_off,
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Date Selection
                   Row(
                     children: [
@@ -1117,7 +1248,7 @@ class _CarRentalScreenState extends State<CarRentalScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             // Car List
             ListView.builder(
               shrinkWrap: true,
@@ -1126,14 +1257,16 @@ class _CarRentalScreenState extends State<CarRentalScreen> {
               itemBuilder: (context, index) {
                 final car = carTypes[index];
                 final isSelected = selectedCarType == car['name'];
-                
+
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
                     color: const Color(0xff1b263b),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isSelected ? Colors.orange : Colors.white.withOpacity(0.1),
+                      color: isSelected
+                          ? Colors.orange
+                          : Colors.white.withOpacity(0.1),
                       width: isSelected ? 2 : 1,
                     ),
                   ),
@@ -1176,9 +1309,14 @@ class _CarRentalScreenState extends State<CarRentalScreen> {
                         const SizedBox(height: 8),
                         Wrap(
                           spacing: 8,
-                          children: (car['features'] as List<String>).map((feature) {
+                          children: (car['features'] as List<String>).map((
+                            feature,
+                          ) {
                             return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(8),
@@ -1257,10 +1395,7 @@ class _CarRentalScreenState extends State<CarRentalScreen> {
               const SizedBox(width: 8),
               Text(
                 title,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ],
           ),
@@ -1291,10 +1426,7 @@ class _CarRentalScreenState extends State<CarRentalScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-            ),
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
           ),
           const SizedBox(height: 8),
           Text(
@@ -1311,8 +1443,10 @@ class _CarRentalScreenState extends State<CarRentalScreen> {
   }
 
   void _showBookingConfirmation(BuildContext context) {
-    final selectedCar = carTypes.firstWhere((car) => car['name'] == selectedCarType);
-    
+    final selectedCar = carTypes.firstWhere(
+      (car) => car['name'] == selectedCarType,
+    );
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -1353,7 +1487,10 @@ class _CarRentalScreenState extends State<CarRentalScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white70),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
@@ -1389,22 +1526,114 @@ class StoreDirectoryScreen extends StatefulWidget {
 
 class _StoreDirectoryScreenState extends State<StoreDirectoryScreen> {
   String selectedCategory = 'All';
-  final List<String> categories = ['All', 'Fashion', 'Electronics', 'Food', 'Health', 'Entertainment'];
-  
+  final List<String> categories = [
+    'All',
+    'Favorites',
+    'Fashion',
+    'Electronics',
+    'Food',
+    'Health',
+    'Entertainment',
+  ];
+
+  Set<String> favoriteStores = {};
+
   final List<Map<String, dynamic>> stores = [
-    {'name': 'Nike Store', 'category': 'Fashion', 'floor': 'Ground Floor', 'status': 'Open', 'hours': '10:00 AM - 10:00 PM'},
-    {'name': 'Apple Store', 'category': 'Electronics', 'floor': 'Floor 2', 'status': 'Open', 'hours': '10:00 AM - 9:00 PM'},
-    {'name': 'Zara', 'category': 'Fashion', 'floor': 'Floor 1', 'status': 'Open', 'hours': '10:00 AM - 10:00 PM'},
-    {'name': 'McDonald\'s', 'category': 'Food', 'floor': 'Food Court', 'status': 'Open', 'hours': '8:00 AM - 11:00 PM'},
-    {'name': 'Samsung Store', 'category': 'Electronics', 'floor': 'Floor 2', 'status': 'Open', 'hours': '10:00 AM - 9:00 PM'},
-    {'name': 'H&M', 'category': 'Fashion', 'floor': 'Floor 1', 'status': 'Open', 'hours': '10:00 AM - 10:00 PM'},
-    {'name': 'Pharmacy Plus', 'category': 'Health', 'floor': 'Ground Floor', 'status': 'Open', 'hours': '9:00 AM - 9:00 PM'},
-    {'name': 'Cinema Complex', 'category': 'Entertainment', 'floor': 'Floor 3', 'status': 'Open', 'hours': '10:00 AM - 12:00 AM'},
+    {
+      'name': 'Nike Store',
+      'category': 'Fashion',
+      'floor': 'Ground Floor',
+      'status': 'Open',
+      'hours': '10:00 AM - 10:00 PM',
+    },
+    {
+      'name': 'Apple Store',
+      'category': 'Electronics',
+      'floor': 'Floor 2',
+      'status': 'Open',
+      'hours': '10:00 AM - 9:00 PM',
+    },
+    {
+      'name': 'Zara',
+      'category': 'Fashion',
+      'floor': 'Floor 1',
+      'status': 'Open',
+      'hours': '10:00 AM - 10:00 PM',
+    },
+    {
+      'name': 'McDonald\'s',
+      'category': 'Food',
+      'floor': 'Food Court',
+      'status': 'Open',
+      'hours': '8:00 AM - 11:00 PM',
+    },
+    {
+      'name': 'Samsung Store',
+      'category': 'Electronics',
+      'floor': 'Floor 2',
+      'status': 'Open',
+      'hours': '10:00 AM - 9:00 PM',
+    },
+    {
+      'name': 'H&M',
+      'category': 'Fashion',
+      'floor': 'Floor 1',
+      'status': 'Open',
+      'hours': '10:00 AM - 10:00 PM',
+    },
+    {
+      'name': 'Pharmacy Plus',
+      'category': 'Health',
+      'floor': 'Ground Floor',
+      'status': 'Open',
+      'hours': '9:00 AM - 9:00 PM',
+    },
+    {
+      'name': 'Cinema Complex',
+      'category': 'Entertainment',
+      'floor': 'Floor 3',
+      'status': 'Open',
+      'hours': '10:00 AM - 12:00 AM',
+    },
   ];
 
   List<Map<String, dynamic>> get filteredStores {
     if (selectedCategory == 'All') return stores;
-    return stores.where((store) => store['category'] == selectedCategory).toList();
+    if (selectedCategory == 'Favorites') {
+      return stores
+          .where((s) => favoriteStores.contains(s['name'] as String))
+          .toList();
+    }
+    return stores
+        .where((store) => store['category'] == selectedCategory)
+        .toList();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFavorites();
+  }
+
+  Future<void> _loadFavorites() async {
+    final list = await StorageService.getStringList(StorageKeys.favoriteStores);
+    if (!mounted) return;
+    setState(() => favoriteStores = list.toSet());
+  }
+
+  Future<void> _toggleFavorite(String name) async {
+    final set = favoriteStores.toSet();
+    if (set.contains(name)) {
+      set.remove(name);
+    } else {
+      set.add(name);
+    }
+    await StorageService.setStringList(
+      StorageKeys.favoriteStores,
+      set.toList(),
+    );
+    if (!mounted) return;
+    setState(() => favoriteStores = set);
   }
 
   @override
@@ -1450,7 +1679,7 @@ class _StoreDirectoryScreenState extends State<StoreDirectoryScreen> {
               },
             ),
           ),
-          
+
           // Store List
           Expanded(
             child: ListView.builder(
@@ -1458,6 +1687,7 @@ class _StoreDirectoryScreenState extends State<StoreDirectoryScreen> {
               itemCount: filteredStores.length,
               itemBuilder: (context, index) {
                 final store = filteredStores[index];
+                final isFav = favoriteStores.contains(store['name']);
                 return Card(
                   color: const Color(0xff1b263b),
                   margin: const EdgeInsets.only(bottom: 12),
@@ -1474,24 +1704,56 @@ class _StoreDirectoryScreenState extends State<StoreDirectoryScreen> {
                     ),
                     title: Text(
                       store['name'],
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 4),
-                        Text(store['floor'], style: const TextStyle(color: Colors.white70)),
-                        Text('${store['status']} • ${store['hours']}', 
-                             style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                        Text(
+                          store['floor'],
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                        Text(
+                          '${store['status']} • ${store['hours']}',
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.directions, color: Colors.orange),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Navigating to ${store['name']}...')),
-                        );
-                      },
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            isFav ? Icons.favorite : Icons.favorite_border,
+                            color: isFav ? Colors.redAccent : Colors.white54,
+                          ),
+                          tooltip: isFav ? 'Unfavorite' : 'Add to favorites',
+                          onPressed: () =>
+                              _toggleFavorite(store['name'] as String),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.directions,
+                            color: Colors.orange,
+                          ),
+                          tooltip: 'Navigate',
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const NavigationScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
                 );
@@ -1542,16 +1804,36 @@ class ParkingScreen extends StatelessWidget {
                           color: Colors.green.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.directions_car, color: Colors.green, size: 30),
+                        child: const Icon(
+                          Icons.directions_car,
+                          color: Colors.green,
+                          size: 30,
+                        ),
                       ),
                       const SizedBox(width: 16),
                       const Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('My Car Location', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                            Text('Level B2 - Section A - Spot 247', style: TextStyle(color: Colors.white70)),
-                            Text('Parked 2 hours ago', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                            Text(
+                              'My Car Location',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Level B2 - Section A - Spot 247',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            Text(
+                              'Parked 2 hours ago',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1560,8 +1842,11 @@ class ParkingScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Starting AR navigation to your car...')),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const NavigationScreen(),
+                        ),
                       );
                     },
                     style: ElevatedButton.styleFrom(
@@ -1577,25 +1862,51 @@ class ParkingScreen extends StatelessWidget {
             const SizedBox(height: 30),
 
             // Parking Levels
-            const Text('Parking Availability', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text(
+              'Parking Availability',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 16),
-            
+
             _buildParkingLevel('Ground Level', 45, 120, Colors.red),
             _buildParkingLevel('Level B1', 78, 150, Colors.orange),
             _buildParkingLevel('Level B2', 92, 180, Colors.green),
             _buildParkingLevel('Level B3', 134, 200, Colors.green),
-            
+
             const SizedBox(height: 30),
-            
+
             // Parking Services
-            const Text('Parking Services', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text(
+              'Parking Services',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 16),
-            
+
             Row(
               children: [
-                Expanded(child: _buildServiceCard('Valet Service', Icons.person, Colors.purple)),
+                Expanded(
+                  child: _buildServiceCard(
+                    'Valet Service',
+                    Icons.person,
+                    Colors.purple,
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: _buildServiceCard('Car Wash', Icons.local_car_wash, Colors.blue)),
+                Expanded(
+                  child: _buildServiceCard(
+                    'Car Wash',
+                    Icons.local_car_wash,
+                    Colors.blue,
+                  ),
+                ),
               ],
             ),
           ],
@@ -1604,7 +1915,12 @@ class ParkingScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildParkingLevel(String level, int available, int total, Color color) {
+  Widget _buildParkingLevel(
+    String level,
+    int available,
+    int total,
+    Color color,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -1618,19 +1934,34 @@ class ParkingScreen extends StatelessWidget {
           Container(
             width: 8,
             height: 40,
-            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(4),
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(level, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                Text('$available available of $total spaces', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                Text(
+                  level,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '$available available of $total spaces',
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
               ],
             ),
           ),
-          Text('${((available / total) * 100).round()}%', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+          Text(
+            '${((available / total) * 100).round()}%',
+            style: TextStyle(color: color, fontWeight: FontWeight.bold),
+          ),
         ],
       ),
     );
@@ -1648,7 +1979,11 @@ class ParkingScreen extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 30),
           const SizedBox(height: 8),
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 12), textAlign: TextAlign.center),
+          Text(
+            title,
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
@@ -1660,12 +1995,48 @@ class FoodCourtScreen extends StatelessWidget {
   const FoodCourtScreen({super.key});
 
   final List<Map<String, dynamic>> restaurants = const [
-    {'name': 'McDonald\'s', 'type': 'Fast Food', 'rating': 4.2, 'time': '10-15 min', 'image': '🍔'},
-    {'name': 'Subway', 'type': 'Sandwiches', 'rating': 4.0, 'time': '5-10 min', 'image': '🥪'},
-    {'name': 'KFC', 'type': 'Chicken', 'rating': 4.1, 'time': '15-20 min', 'image': '🍗'},
-    {'name': 'Pizza Hut', 'type': 'Pizza', 'rating': 4.3, 'time': '20-25 min', 'image': '🍕'},
-    {'name': 'Starbucks', 'type': 'Coffee', 'rating': 4.5, 'time': '5-8 min', 'image': '☕'},
-    {'name': 'Panda Express', 'type': 'Asian', 'rating': 4.0, 'time': '10-15 min', 'image': '🥡'},
+    {
+      'name': 'McDonald\'s',
+      'type': 'Fast Food',
+      'rating': 4.2,
+      'time': '10-15 min',
+      'image': '🍔',
+    },
+    {
+      'name': 'Subway',
+      'type': 'Sandwiches',
+      'rating': 4.0,
+      'time': '5-10 min',
+      'image': '🥪',
+    },
+    {
+      'name': 'KFC',
+      'type': 'Chicken',
+      'rating': 4.1,
+      'time': '15-20 min',
+      'image': '🍗',
+    },
+    {
+      'name': 'Pizza Hut',
+      'type': 'Pizza',
+      'rating': 4.3,
+      'time': '20-25 min',
+      'image': '🍕',
+    },
+    {
+      'name': 'Starbucks',
+      'type': 'Coffee',
+      'rating': 4.5,
+      'time': '5-8 min',
+      'image': '☕',
+    },
+    {
+      'name': 'Panda Express',
+      'type': 'Asian',
+      'rating': 4.0,
+      'time': '10-15 min',
+      'image': '🥡',
+    },
   ];
 
   @override
@@ -1701,14 +2072,26 @@ class FoodCourtScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Food Court Map', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                            Text('Level 3 - Central Area', style: TextStyle(color: Colors.white70)),
+                            Text(
+                              'Food Court Map',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Level 3 - Central Area',
+                              style: TextStyle(color: Colors.white70),
+                            ),
                           ],
                         ),
                       ),
                       ElevatedButton(
                         onPressed: () {},
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                        ),
                         child: const Text('View Map'),
                       ),
                     ],
@@ -1719,9 +2102,16 @@ class FoodCourtScreen extends StatelessWidget {
             const SizedBox(height: 30),
 
             // Restaurant List
-            const Text('Available Restaurants', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text(
+              'Available Restaurants',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 16),
-            
+
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -1745,29 +2135,53 @@ class FoodCourtScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Center(
-                        child: Text(restaurant['image'], style: const TextStyle(fontSize: 24)),
+                        child: Text(
+                          restaurant['image'],
+                          style: const TextStyle(fontSize: 24),
+                        ),
                       ),
                     ),
-                    title: Text(restaurant['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    title: Text(
+                      restaurant['name'],
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 4),
-                        Text(restaurant['type'], style: const TextStyle(color: Colors.white70)),
+                        Text(
+                          restaurant['type'],
+                          style: const TextStyle(color: Colors.white70),
+                        ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            const Icon(Icons.star, color: Colors.orange, size: 16),
-                            Text(' ${restaurant['rating']} • ${restaurant['time']}', 
-                                 style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                            const Icon(
+                              Icons.star,
+                              color: Colors.orange,
+                              size: 16,
+                            ),
+                            Text(
+                              ' ${restaurant['rating']} • ${restaurant['time']}',
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
                       ],
                     ),
                     trailing: ElevatedButton(
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Navigating to ${restaurant['name']}...')),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const NavigationScreen(),
+                          ),
                         );
                       },
                       style: ElevatedButton.styleFrom(
@@ -1792,11 +2206,36 @@ class DealsScreen extends StatelessWidget {
   const DealsScreen({super.key});
 
   final List<Map<String, dynamic>> deals = const [
-    {'store': 'Nike', 'deal': '30% Off All Shoes', 'expires': '2 days left', 'code': 'MALL30'},
-    {'store': 'Zara', 'deal': 'Buy 2 Get 1 Free', 'expires': '5 days left', 'code': 'ZARA3'},
-    {'store': 'Apple Store', 'deal': '10% Student Discount', 'expires': 'Ongoing', 'code': 'STUDENT10'},
-    {'store': 'H&M', 'deal': '50% Off Summer Collection', 'expires': '1 week left', 'code': 'SUMMER50'},
-    {'store': 'Food Court', 'deal': 'Free Drink with Meal', 'expires': 'Today only', 'code': 'DRINK2024'},
+    {
+      'store': 'Nike',
+      'deal': '30% Off All Shoes',
+      'expires': '2 days left',
+      'code': 'MALL30',
+    },
+    {
+      'store': 'Zara',
+      'deal': 'Buy 2 Get 1 Free',
+      'expires': '5 days left',
+      'code': 'ZARA3',
+    },
+    {
+      'store': 'Apple Store',
+      'deal': '10% Student Discount',
+      'expires': 'Ongoing',
+      'code': 'STUDENT10',
+    },
+    {
+      'store': 'H&M',
+      'deal': '50% Off Summer Collection',
+      'expires': '1 week left',
+      'code': 'SUMMER50',
+    },
+    {
+      'store': 'Food Court',
+      'deal': 'Free Drink with Meal',
+      'expires': 'Today only',
+      'code': 'DRINK2024',
+    },
   ];
 
   @override
@@ -1819,7 +2258,10 @@ class DealsScreen extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.purple.withOpacity(0.8), Colors.orange.withOpacity(0.8)],
+                  colors: [
+                    Colors.purple.withOpacity(0.8),
+                    Colors.orange.withOpacity(0.8),
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -1828,20 +2270,47 @@ class DealsScreen extends StatelessWidget {
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('🎉 Featured Deal', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    '🎉 Featured Deal',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   SizedBox(height: 8),
-                  Text('Mall-Wide Sale Event', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                  Text('Up to 70% off at participating stores', style: TextStyle(color: Colors.white70)),
+                  Text(
+                    'Mall-Wide Sale Event',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Up to 70% off at participating stores',
+                    style: TextStyle(color: Colors.white70),
+                  ),
                   SizedBox(height: 12),
-                  Text('Valid until Sunday', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  Text(
+                    'Valid until Sunday',
+                    style: TextStyle(color: Colors.white, fontSize: 12),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 30),
 
-            const Text('Current Offers', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text(
+              'Current Offers',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 16),
-            
+
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -1864,27 +2333,55 @@ class DealsScreen extends StatelessWidget {
                         color: Colors.purple.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.local_offer, color: Colors.purple),
+                      child: const Icon(
+                        Icons.local_offer,
+                        color: Colors.purple,
+                      ),
                     ),
-                    title: Text(deal['store'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    title: Text(
+                      deal['store'],
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 4),
-                        Text(deal['deal'], style: const TextStyle(color: Colors.white70)),
+                        Text(
+                          deal['deal'],
+                          style: const TextStyle(color: Colors.white70),
+                        ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.orange.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: Text(deal['code'], style: const TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold)),
+                              child: Text(
+                                deal['code'],
+                                style: const TextStyle(
+                                  color: Colors.orange,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                             const SizedBox(width: 8),
-                            Text(deal['expires'], style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                            Text(
+                              deal['expires'],
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -1893,7 +2390,9 @@ class DealsScreen extends StatelessWidget {
                       icon: const Icon(Icons.copy, color: Colors.orange),
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Code ${deal['code']} copied!')),
+                          SnackBar(
+                            content: Text('Code ${deal['code']} copied!'),
+                          ),
                         );
                       },
                     ),
@@ -1913,11 +2412,41 @@ class EventsScreen extends StatelessWidget {
   const EventsScreen({super.key});
 
   final List<Map<String, dynamic>> events = const [
-    {'name': 'Summer Fashion Show', 'date': 'July 28, 2025', 'time': '7:00 PM', 'location': 'Central Court', 'image': '👗'},
-    {'name': 'Kids Art Workshop', 'date': 'July 30, 2025', 'time': '2:00 PM', 'location': 'Activity Zone', 'image': '🎨'},
-    {'name': 'Live Music Performance', 'date': 'August 2, 2025', 'time': '6:00 PM', 'location': 'Food Court Stage', 'image': '🎵'},
-    {'name': 'Tech Product Launch', 'date': 'August 5, 2025', 'time': '11:00 AM', 'location': 'Apple Store', 'image': '📱'},
-    {'name': 'Cooking Demo', 'date': 'August 8, 2025', 'time': '3:00 PM', 'location': 'Food Court', 'image': '👨‍🍳'},
+    {
+      'name': 'Summer Fashion Show',
+      'date': 'July 28, 2025',
+      'time': '7:00 PM',
+      'location': 'Central Court',
+      'image': '👗',
+    },
+    {
+      'name': 'Kids Art Workshop',
+      'date': 'July 30, 2025',
+      'time': '2:00 PM',
+      'location': 'Activity Zone',
+      'image': '🎨',
+    },
+    {
+      'name': 'Live Music Performance',
+      'date': 'August 2, 2025',
+      'time': '6:00 PM',
+      'location': 'Food Court Stage',
+      'image': '🎵',
+    },
+    {
+      'name': 'Tech Product Launch',
+      'date': 'August 5, 2025',
+      'time': '11:00 AM',
+      'location': 'Apple Store',
+      'image': '📱',
+    },
+    {
+      'name': 'Cooking Demo',
+      'date': 'August 8, 2025',
+      'time': '3:00 PM',
+      'location': 'Food Court',
+      'image': '👨‍🍳',
+    },
   ];
 
   @override
@@ -1940,7 +2469,10 @@ class EventsScreen extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.teal.withOpacity(0.8), Colors.blue.withOpacity(0.8)],
+                  colors: [
+                    Colors.teal.withOpacity(0.8),
+                    Colors.blue.withOpacity(0.8),
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -1949,16 +2481,32 @@ class EventsScreen extends StatelessWidget {
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('🌟 Today\'s Feature', style: TextStyle(color: Colors.white, fontSize: 16)),
+                  Text(
+                    '🌟 Today\'s Feature',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
                   SizedBox(height: 8),
-                  Text('Summer Fashion Show', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('Join us for an exclusive fashion showcase', style: TextStyle(color: Colors.white70)),
+                  Text(
+                    'Summer Fashion Show',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Join us for an exclusive fashion showcase',
+                    style: TextStyle(color: Colors.white70),
+                  ),
                   SizedBox(height: 12),
                   Row(
                     children: [
                       Icon(Icons.access_time, color: Colors.white70, size: 16),
                       SizedBox(width: 4),
-                      Text('7:00 PM • Central Court', style: TextStyle(color: Colors.white70)),
+                      Text(
+                        '7:00 PM • Central Court',
+                        style: TextStyle(color: Colors.white70),
+                      ),
                     ],
                   ),
                 ],
@@ -1966,9 +2514,16 @@ class EventsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 30),
 
-            const Text('Upcoming Events', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text(
+              'Upcoming Events',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 16),
-            
+
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -1992,22 +2547,44 @@ class EventsScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Center(
-                        child: Text(event['image'], style: const TextStyle(fontSize: 24)),
+                        child: Text(
+                          event['image'],
+                          style: const TextStyle(fontSize: 24),
+                        ),
                       ),
                     ),
-                    title: Text(event['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    title: Text(
+                      event['name'],
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 4),
-                        Text('${event['date']} at ${event['time']}', style: const TextStyle(color: Colors.white70)),
-                        Text(event['location'], style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                        Text(
+                          '${event['date']} at ${event['time']}',
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                        Text(
+                          event['location'],
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ),
                     trailing: ElevatedButton(
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Added ${event['name']} to calendar!')),
+                          SnackBar(
+                            content: Text(
+                              'Added ${event['name']} to calendar!',
+                            ),
+                          ),
                         );
                       },
                       style: ElevatedButton.styleFrom(
