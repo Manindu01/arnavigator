@@ -591,10 +591,19 @@ class NavigatorPage extends StatelessWidget {
           ),
         ),
         subtitle: Text(distance, style: TextStyle(color: Colors.grey[400])),
-        trailing: const Icon(
-          Icons.arrow_forward_ios,
-          color: Colors.grey,
-          size: 16,
+        trailing: IconButton(
+          icon: const Icon(
+            Icons.arrow_forward_ios,
+            color: Colors.grey,
+            size: 16,
+          ),
+          tooltip: 'Navigate',
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NavigationScreen()),
+            );
+          },
         ),
         onTap: () {
           Navigator.push(
@@ -1571,10 +1580,12 @@ class _StoreDirectoryScreenState extends State<StoreDirectoryScreen> {
                     ),
                     trailing: IconButton(
                       icon: const Icon(Icons.directions, color: Colors.orange),
+                      tooltip: 'Navigate',
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Navigating to ${store['name']}...'),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const NavigationScreen(),
                           ),
                         );
                       },
